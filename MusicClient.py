@@ -98,7 +98,7 @@ class Client():
                 # success
                 fav_nums = fav_data['req_0']['data']['m_numbers']
                 for k in song_list.keys():
-                    out_str += "%s\t%s\t%s\n"%(song_list[k]['name'], ",".join(song_list[k]['singers']), fav_nums[str(k)])
+                    out_str += "%s\t%s\t%s\n"%(song_list[k]['name'], "&".join(song_list[k]['singers']), fav_nums[str(k)])
                     song_list[k]['fav'] = fav_nums[str(k)]
 
                 print(out_str)
