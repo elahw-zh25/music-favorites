@@ -1,2 +1,10 @@
-# music-favorites
-Check fav count in specific playlist.
+# 歌单歌曲收藏数查询
+**申明：本repo内的内容仅供学习计算机网络相关知识使用，未经允许切勿用于商业用途，否则可能违反腾讯的社区规范守则。**  
+
+# Prerequisite
+
+- [ ] python  
+- [ ] requests 可以使用pip进行安装。
+```
+pip install requests
+```
