@@ -15,7 +15,6 @@
 '''
 import requests
 import json
-from bs4 import BeautifulSoup
 
 base_url = "https://u.y.qq.com/cgi-bin/musicu.fcg"
 playlist_base_url = "https://c.y.qq.com/v8/fcg-bin/fcg_v8_playlist_cp.fcg"
