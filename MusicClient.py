@@ -15,6 +15,7 @@
 '''
 import requests
 import json
+import time
 
 base_url = "https://u.y.qq.com/cgi-bin/musicu.fcg"
 playlist_base_url = "https://c.y.qq.com/v8/fcg-bin/fcg_v8_playlist_cp.fcg"
@@ -68,6 +69,10 @@ class Client():
     # sont_id_list : int[]
     def get_song_fav_count(self, song_id_list):
         return self.get_music_api("music.musicasset.SongFavRead", "GetSongFansNumberById", {"v_songid" : song_id_list})
+    
+    # sont_mid_list : string[]
+    def get_song_play_count(self, song_mid_list):
+        return self.get_music_api("music.musicToplist.PlayTopInfoServer", "GetPlayTopData", {"songMidList" : song_mid_list})
         
     def get_playlist_details(self, playlist_id):
         res = self.get_music_api_single_request(playlist_base_url, {"id" : playlist_id})
@@ -82,26 +87,42 @@ class Client():
             song_ids = playlist_data['data']['cdlist'][0]['songids']
             songlist_data = playlist_data['data']['cdlist'][0]['songlist']
             song_list = {}
+            song_mid_list = {}
             for i in range(0, len(songlist_data)):
                 song_id = songlist_data[i]['id']
+                song_mid = songlist_data[i]['mid']
+                song_mid_list[song_mid] = song_id
                 song_name = songlist_data[i]['name']
                 singers = songlist_data[i]['singer']
                 singer_names = []
                 for j in range(0, len(singers)):
                     singer_names.append(singers[j]['name'])
-                song_list[song_id] = {"name" : song_name, "singers" : singer_names}
+                song_list[song_id] = {"name" : song_name, "singers" : singer_names, "mid" :song_mid, "play":"0"}
                 
             check_fav_res = self.get_song_fav_count(list(song_list.keys()))
             fav_data = check_fav_res.json()
-            out_str = "Song\tSinger\tFav Count\n"
+
             if fav_data['req_0']['code'] == 0:
                 # success
                 fav_nums = fav_data['req_0']['data']['m_numbers']
-                for k in song_list.keys():
-                    out_str += "%s\t%s\t%s\n"%(song_list[k]['name'], "&".join(song_list[k]['singers']), fav_nums[str(k)])
-                    song_list[k]['fav'] = fav_nums[str(k)]
+                for song_id in song_list.keys():
+                    song_list[song_id]['fav'] = fav_nums[str(song_id)]
 
-                print(out_str)
+            list_mid = list(song_mid_list.keys())
+            fixSizeChunk = 10
+            for i in range(0, len(list_mid), fixSizeChunk):
+                check_play_res = self.get_song_play_count(list_mid[i:i + fixSizeChunk])
+                play_data = check_play_res.json()
+                if play_data['req_0']['code'] == 0:
+                    play_nums = play_data['req_0']['data']['data']
+                    for mid in play_nums.keys():
+                        song_list[song_mid_list[mid]]['play'] = play_nums[mid]['listenCnt']
+                time.sleep(1)
+            
+            out_str = "Song\tSinger\tFav Count\tPlay Count(w+)\n"
+            for song_id in song_list.keys():
+                    out_str += "%s\t%s\t%s\t%s\n"%(song_list[song_id]['name'], "&".join(song_list[song_id]['singers']), song_list[song_id]['fav'], song_list[song_id]['play'][:-2])
+            print(out_str)
 
             if path != "":
                 f_o = open(path, 'w')
