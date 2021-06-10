@@ -132,7 +132,7 @@ class Client():
         print("Total play count: %s w+"%total_count)
         return total_count
         
-    def get_top_singers_play_count(self, start = 0, size = 10):
+    def get_top_singers_play_count(self, size = 10, start = 0):
         singer_list = {}
         singers_res = self.get_top_singers()
         singers_data = singers_res.json()
