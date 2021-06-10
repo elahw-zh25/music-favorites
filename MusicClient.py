@@ -78,7 +78,7 @@ class Client():
         res = self.get_music_api_single_request(playlist_base_url, {"id" : playlist_id})
         return res
         
-    def get_song_fav_playlist(self, playlist_id, path = ""):
+    def get_song_info_playlist(self, playlist_id, path = ""):
         playlist_res = self.get_playlist_details(playlist_id)
         playlist_data = playlist_res.json()
         
