@@ -73,6 +73,80 @@ class Client():
     # sont_mid_list : string[]
     def get_song_play_count(self, song_mid_list):
         return self.get_music_api("music.musicToplist.PlayTopInfoServer", "GetPlayTopData", {"songMidList" : song_mid_list})
+    
+    # return top 80 singers in singer hall with mid info
+    def get_top_singers(self, extra_params = {}):
+        default_params = {"area":-100, "index":-100, "sex":-100, "genre":-100, "cur_page":1, "sin":0}
+        default_params.update(extra_params)
+        return self.get_music_api("music.musichallSinger.SingerList", "GetSingerListIndex", default_params)
+    
+    # get top songs of the singer
+    def get_song_list(self, singer_mid, start = 0, page_size = 10):
+        params = {"singerMid":singer_mid, "begin":start, "num":page_size, "order":1}
+        return self.get_music_api("musichall.song_list_server", "GetSingerSongList", params)
+    
+    # get song total play count of singer
+    def get_song_play_singer(self, singer_mid, path = "", top_songs = 100):
+        song_list = {}
+        
+        list_res = self.get_song_list(singer_mid, 0, top_songs)
+        data = list_res.json()
+        if (data['req_0']['code'] == 0):
+            song_list_data = data['req_0']['data']['songList']
+            for song in song_list_data:
+                song_mid = song['songInfo']['mid']
+                song_name = song['songInfo']['name']
+                singers = song['songInfo']['singer']
+                singer_names = []
+                for singer in singers:
+                    singer_names.append(singer['name'])
+                song_list[song_mid] = {"name" : song_name, "singers" : singer_names, "play" : "0w+"}
+        
+        list_mid = list(song_list.keys())
+        fixSizeChunk = 10
+        for i in range(0, len(list_mid), fixSizeChunk):
+            check_play_res = self.get_song_play_count(list_mid[i:i + fixSizeChunk])
+            play_data = check_play_res.json()
+            if play_data['req_0']['code'] == 0:
+                play_nums = play_data['req_0']['data']['data']
+                
+                # early return heuristic that no more hot songs after this chunk
+                if len(play_nums.keys()) == 0:
+                    break
+                for mid in play_nums.keys():
+                    song_list[mid]['play'] = play_nums[mid]['listenCnt']
+            time.sleep(1)
+
+        out_str = "Song\tSinger\tPlay Count(w+)\n"
+        total_count = 0
+        for song_id in song_list.keys():
+            out_str += "%s\t%s\t%s\n"%(song_list[song_id]['name'], "&".join(song_list[song_id]['singers']), song_list[song_id]['play'][:-2])
+            total_count += int(song_list[song_id]['play'][:-2])
+
+        # print(out_str)
+        if path != "":
+            f_o = open(path, 'w')
+            f_o.write(out_str)
+            f_o.close()
+        
+        print("Total play count: %s w+"%total_count)
+        return total_count
+        
+    def get_top_singers_play_count(self, start = 0, size = 10):
+        singer_list = {}
+        singers_res = self.get_top_singers()
+        singers_data = singers_res.json()
+        if singers_data['req_0']['code'] == 0:
+            singer_list_data = singers_data['req_0']['data']['singerlist']
+            for i in range(start, min(start + size, len(singer_list_data))):
+                singer_info = singer_list_data[i]
+                singer_list[singer_info['singer_mid']] = {"name" : singer_info['singer_name']}
+                singer_list[singer_info['singer_mid']]['play'] = self.get_song_play_singer(singer_info['singer_mid'])
+                
+        out_str = "Singer\tPlay Count(w+)\n"
+        for singer_mid in singer_list:
+            out_str += "%s\t%s\n"%(singer_list[singer_mid]['name'], singer_list[singer_mid]['play'])
+        print(out_str)
         
     def get_playlist_details(self, playlist_id):
         res = self.get_music_api_single_request(playlist_base_url, {"id" : playlist_id})
@@ -81,13 +155,13 @@ class Client():
     def get_song_info_playlist(self, playlist_id, path = ""):
         playlist_res = self.get_playlist_details(playlist_id)
         playlist_data = playlist_res.json()
+        song_list = {}
+        song_mid_list = {}
         
         if playlist_data["code"] == 0:
             #success data
             song_ids = playlist_data['data']['cdlist'][0]['songids']
             songlist_data = playlist_data['data']['cdlist'][0]['songlist']
-            song_list = {}
-            song_mid_list = {}
             for i in range(0, len(songlist_data)):
                 song_id = songlist_data[i]['id']
                 song_mid = songlist_data[i]['mid']
